@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Movie Collection</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f4f4f4;
+    margin: 0;
+    padding: 40px 20px;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 40px;
+    border-radius: 6px;
+  }
+  h1 {
+    text-align: center;
+    margin-top: 0;
+  }
+  h2 {
+    margin-bottom: 15px;
+  }
+  .form-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+  }
+  .form-row input {
+    flex: 1;
+    min-width: 150px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  button {
+    padding: 10px 18px;
+    border: 1px solid #ccc;
+    background: #eee;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button:hover {
+    background: #ddd;
+  }
+  #statusMsg {
+    font-weight: bold;
+    min-height: 20px;
+    margin-bottom: 10px;
+  }
+  #statusMsg.error {
+    color: #b00020;
+  }
+  #statusMsg.success {
+    color: #1a1a1a;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 10px 15px;
+    text-align: left;
+  }
+  th {
+    background: #eee;
+  }
+  tbody tr:nth-child(even) {
+    background: #fafafa;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Movie Collection</h1>
+
+    <h2>Add Movie</h2>
+    <div class="form-row">
+      <input type="text" id="titleInput" placeholder="Title" />
+      <input type="text" id="genreInput" placeholder="Genre" />
+      <input type="number" id="yearInput" placeholder="Year" />
+      <button id="addMovieBtn">Add Movie</button>
+    </div>
+    <p id="statusMsg"></p>
+
+    <h2>Movies</h2>
+    <button id="loadMoviesBtn">Load Movies</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Genre</th>
+          <th>Year</th>
+        </tr>
+      </thead>
+      <tbody id="movieTableBody">
+      </tbody>
+    </table>
+  </div>
+
+<script>
+  const API_URL = '/api/movies';
+
+  const titleInput = document.getElementById('titleInput');
+  const genreInput = document.getElementById('genreInput');
+  const yearInput = document.getElementById('yearInput');
+  const statusMsg = document.getElementById('statusMsg');
+  const movieTableBody = document.getElementById('movieTableBody');
+
+  async function loadMovies() {
+    try {
+      const res = await fetch(API_URL);
+      const movies = await res.json();
+      renderMovies(movies);
+    } catch (err) {
+      showStatus('Failed to load movies.', true);
+    }
+  }
+
+  function renderMovies(movies) {
+    movieTableBody.innerHTML = '';
+    movies.forEach((movie) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${movie.id}</td>
+        <td>${escapeHtml(movie.title)}</td>
+        <td>${escapeHtml(movie.genre)}</td>
+        <td>${movie.year}</td>
+      `;
+      movieTableBody.appendChild(row);
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function showStatus(message, isError) {
+    statusMsg.textContent = message;
+    statusMsg.className = isError ? 'error' : 'success';
+  }
+
+  async function addMovie() {
+    const title = titleInput.value.trim();
+    const genre = genreInput.value.trim();
+    const year = yearInput.value.trim();
+
+    if (!title || !genre || !year) {
+      showStatus('Please fill in title, genre, and year.', true);
+      return;
+    }
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, genre, year })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showStatus(data.error || 'Failed to add movie.', true);
+        return;
+      }
+
+      showStatus('Movie added successfully', false);
+      titleInput.value = '';
+      genreInput.value = '';
+      yearInput.value = '';
+
+      // Refresh the list after adding
+      loadMovies();
+    } catch (err) {
+      showStatus('Failed to add movie.', true);
+    }
+  }
+
+  document.getElementById('addMovieBtn').addEventListener('click', addMovie);
+  document.getElementById('loadMoviesBtn').addEventListener('click', loadMovies);
+
+  // Load movies automatically on page load
+  loadMovies();
+</script>
+</body>
+</html>
